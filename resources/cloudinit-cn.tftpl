@@ -1,0 +1,214 @@
+#cloud-config
+users:
+  # etcd User is Required for Installing with CIS Profile Enabled
+  - name: etcd
+    gecos: System Account for Running etcd Service
+    sudo: null
+    shell: /sbin/nologin
+    system: true
+  - name: ${admin_username}
+    gecos: Emergency Admin
+    sudo: ALL=(ALL) ALL
+    system: false
+    ssh_authorized_keys:
+      - ${admin_ssh_public_key}
+chpasswd:
+  expire: false
+  users:
+    - name: ${admin_username}
+      password: ${admin_pw_encrypted} 
+ssh_pwauth: true
+write_files:
+- content: |
+    [keyfile]
+    unmanaged-devices=interface-name:cali*;interface-name:flannel*
+  path: /etc/NetworkManager/conf.d/rke2-canal.conf
+- content: |
+    br_netfilter
+    bridge
+    ip6_udp_tunnel
+    ip_set
+    ip_set_hash_ip
+    ip_set_hash_net
+    ip_vs
+    ip_vs_rr
+    ip_vs_sh
+    ip_vs_wrr
+    iptable_filter
+    iptable_nat
+    iptable_mangle
+    iptable_raw
+    nf_conntrack_netlink
+    nf_conntrack
+    nf_conntrack_ipv4
+    nf_defrag_ipv4
+    nf_nat
+    nf_nat_ipv4
+    udp_tunnel
+    veth
+    vxlan
+    x_tables
+    xt_addrtype
+    xt_conntrack
+    xt_comment
+    xt_connmark
+    xt_mark
+    xt_multiport
+    xt_nat
+    xt_owner
+    xt_recent
+    xt_REDIRECT
+    xt_set
+    xt_statistic
+    xt_tcpudp
+  path: /etc/modules-load.d/rke2.conf
+### Group ID: V-254555 STIG ID: CNTR-R2-000060
+- content: |
+    apiVersion: audit.k8s.io/v1
+    kind: Policy
+    metadata:
+      name: rke2-audit-policy
+    rules:
+      - level: Metadata
+        resources:
+        - group: ""
+          resources: ["secrets"]
+      - level: RequestResponse
+        resources:
+        - group: ""
+          resources: ["*"]
+  owner: root:root
+  permissions: '0644'
+  path: /etc/rancher/rke2/audit-policy.yaml
+- content: |
+    # SWAP settings
+    vm.swappiness=0
+    vm.panic_on_oom=0
+    vm.overcommit_memory=1
+    kernel.panic=10
+    kernel.panic_on_oops=1
+    vm.max_map_count = 262144
+
+    # Have a larger connection range available
+    net.ipv4.ip_local_port_range=1024 65000
+
+    # Increase max connection
+    net.core.somaxconn=10000
+
+    # Reuse closed sockets faster
+    net.ipv4.tcp_tw_reuse=1
+    net.ipv4.tcp_fin_timeout=15
+
+    # The maximum number of "backlogged sockets".  Default is 128.
+    net.core.somaxconn=4096
+    net.core.netdev_max_backlog=4096
+
+    # 16MB per socket - which sounds like a lot,
+    # but will virtually never consume that much.
+    net.core.rmem_max=16777216
+    net.core.wmem_max=16777216
+
+    # Various network tunables
+    net.ipv4.tcp_max_syn_backlog=20480
+    net.ipv4.tcp_max_tw_buckets=400000
+    net.ipv4.tcp_no_metrics_save=1
+    net.ipv4.tcp_rmem=4096 87380 16777216
+    net.ipv4.tcp_syn_retries=2
+    net.ipv4.tcp_synack_retries=2
+    net.ipv4.tcp_wmem=4096 65536 16777216
+
+    # ARP cache settings for a highly loaded docker swarm
+    net.ipv4.neigh.default.gc_thresh1=8096
+    net.ipv4.neigh.default.gc_thresh2=12288
+    net.ipv4.neigh.default.gc_thresh3=16384
+
+    # ip_forward and tcp keepalive for iptables
+    net.ipv4.tcp_keepalive_time=600
+    net.ipv4.ip_forward=1
+
+    # monitor file system events
+    fs.inotify.max_user_instances=8192
+    fs.inotify.max_user_watches=1048576
+  path: /etc/sysctl.d/98-rke2.conf
+yum_repos:
+  rke2-common:
+    baseurl: ${rke2_common_baseurl}
+    enabled: true
+    gpgcheck: true
+    gpgkey: ${rancher_gpg_key}
+    name: Rancher RKE2 Common Packages Repository
+  rke2-base:
+    baseurl: ${rke2_base_baseurl}
+    enabled: true
+    gpgcheck: true
+    gpgkey: ${rancher_gpg_key}
+    name: Rancher RKE2 Package Repository
+package_update: true
+package_upgrade: true
+packages:
+  - rke2-selinux.noarch
+  - ipvsadm  # need for kube-vip
+  - nfs-utils  # for NFS storage class
+  - iptables
+  - container-selinux
+  - libnetfilter_conntrack
+  - libnfnetlink
+  - libnftnl
+  - policycoreutils-python-utils
+  - cryptsetup
+runcmd:
+### Begin Group ID: V-254566 STIG ID: CNTR-R2-000580
+# - /usr/bin/firewall-offline-cmd --service=http                # HTTP Ingress (client -> Ingress)
+# - /usr/bin/firewall-offline-cmd --service=https               # HTTPS Ingress (client -> Ingress)
+# - /usr/bin/firewall-offline-cmd --add-port=6443/tcp           # Kubernetes API (agents -> servers; Approved Client -> server)
+# - /usr/bin/firewall-offline-cmd --add-port=9345/tcp           # RKE2 Supervisor API (agents -> servers)
+# - /usr/bin/firewall-offline-cmd --add-port=8472/udp           # Flannel VXLAN / Canal CNI with VXLAN (all)
+# - /usr/bin/firewall-offline-cmd --add-port=10250/tcp          # Kubelet Metrics (all)
+# - /usr/bin/firewall-offline-cmd --add-port=2379-2381/tcp      # etc traffic (server <-> server)
+# - /usr/bin/firewall-offline-cmd --add-port=30000-32767/tcp    # NodePort (all)
+# - /usr/bin/firewall-offline-cmd --add-port=9099/tcp           # Canal CNI health checks (all)
+### End Group ID: V-254566 STIG ID: CNTR-R2-000580
+# Disable swap per Kubernetes and Rancher Best Practices
+- /usr/sbin/swapoff -a
+- sed -i '/ swap / s/^\(.*\)$/#\1/g' /etc/fstab
+# Reload Kernel Modules
+- /usr/bin/systemctl restart systemd-modules-load.service
+# Disable Services per Rancher Best Practices and Experience
+- /usr/bin/systemctl disable --now firewalld
+- /usr/bin/systemctl disable --now fapolicyd
+# Configure the Kernel
+- /usr/sbin/sysctl -p /etc/sysctl.d/98-rke2.conf >/dev/null 2>&1
+### Begin Group ID: V-254564 STIG ID: CNTR-R2-000520
+- /usr/bin/chmod 0600 /etc/rancher/rke2/*
+- /usr/bin/chown root:root /etc/rancher/rke2/*
+- /usr/bin/chown root:root /var/lib/rancher/rke2/*
+- /usr/bin/chown root:root /var/lib/rancher/rke2/agent/*
+- /usr/bin/chmod 0700 /var/lib/rancher/rke2/agent/pod-manifests
+- /usr/bin/chmod 0700 /var/lib/rancher/rke2/agent/etc
+- /usr/bin/find /var/lib/rancher/rke2/agent -maxdepth 1 -type f -name "*.kubeconfig" -exec /usr/bin/chmod 0640 {} \;
+- /usr/bin/find /var/lib/rancher/rke2/agent -maxdepth 1 -type f -name "*.crt" -exec /usr/bin/chmod 0600 {} \;
+- /usr/bin/find /var/lib/rancher/rke2/agent -maxdepth 1 -type f -name "*.key" -exec /usr/bin/chmod 0600 {} \;
+- /usr/bin/chown root:root /var/lib/rancher/rke2/bin/*
+- /usr/bin/chmod 0750 /var/lib/rancher/rke2/bin/*
+- /usr/bin/chown root:root /var/lib/rancher/rke2/data
+- /usr/bin/chmod 0750 /var/lib/rancher/rke2/data
+- /usr/bin/chown root:root /var/lib/rancher/rke2/data/*
+- /usr/bin/chmod 0750 /var/lib/rancher/rke2/data/*
+- /usr/bin/chown root:root /var/lib/rancher/rke2/server/*
+- /usr/bin/chmod 0700 /var/lib/rancher/rke2/server/cred
+- /usr/bin/chmod 0700 /var/lib/rancher/rke2/server/db
+- /usr/bin/chmod 0700 /var/lib/rancher/rke2/server/tls
+- /usr/bin/chmod 0750 /var/lib/rancher/rke2/server/manifests
+- /usr/bin/chmod 0750 /var/lib/rancher/rke2/server/logs
+- /usr/bin/chmod 0600 /var/lib/rancher/rke2/server/token
+### End Group ID: V-254564 STIG ID: CNTR-R2-000520
+### The next couple lines are for Istio to work with SELinux enforcing
+- mkdir -p /var/run/istio-cni
+- semanage fcontext -a -t container_file_t /var/run/istio-cni
+- restorecon -v /var/run/istio-cni
+### End of SELinux Patch
+- echo 'export CONTAINER_RUNTIME_ENDPOINT=unix:/run/k3s/containerd/containerd.sock' >> /etc/profile
+- echo 'export CONTAINERD_ADDRESS=/run/k3s/containerd/containerd.sock' >> /etc/profile
+- echo 'export KUBECONFIG=/etc/rancher/rke2/rke2.yaml' >> /etc/bashrc
+- echo 'export PATH=$PATH:/var/lib/rancher/rke2/bin' >> /etc/profile
+- echo 'alias k=kubectl' >> /etc/bashrc

@@ -1,0 +1,34 @@
+cni: "${cni_provider}"
+secrets-encryption: true                ### Group ID: V-254573 STIG ID: CNTR-R2-001500
+write-kubeconfig-mode: 0600             ### Group ID: V-254564 STIG ID: CNTR-R2-000520
+### Begin Group ID: V-254566 STIG ID: CNTR-R2-000580
+service-node-port-range: 30000-32767
+### End Group ID: V-254566 STIG ID: CNTR-R2-000580
+kube-controller-manager-arg:
+  - bind-address=127.0.0.1                ### Group ID: V-254556 STIG ID: CNTR-R2-000100
+  - use-service-account-credentials=true  ### Group ID: V-254554 STIG ID: CNTR-R2-000030
+  - tls-min-version=VersionTLS12          ### Group ID: V-254553 STIG ID: CNTR-R2-000010
+  - tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384   ### Group ID: V-254553 STIG ID: CNTR-R2-000010
+kube-scheduler-arg:
+  - tls-min-version=VersionTLS12          ### Group ID: V-254553 STIG ID: CNTR-R2-000010
+  - tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384   ### Group ID: V-254553 STIG ID: CNTR-R2-000010
+kube-apiserver-arg:
+  - tls-min-version=VersionTLS12          ### Group ID: V-254553 STIG ID: CNTR-R2-000010
+  - tls-cipher-suites=TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_RSA_WITH_AES_128_GCM_SHA256,TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384   ### Group ID: V-254553 STIG ID: CNTR-R2-000010
+  - authorization-mode=RBAC,Node          ### Group ID: V-254572 STIG ID: CNTR-R2-001270
+  - anonymous-auth=false                  ### Group ID: V-254562 STIG ID: CNTR-R2-000160
+  - audit-policy-file=/etc/rancher/rke2/audit-policy.yaml     ### Group ID: V-254555 STIG ID: CNTR-R2-000060
+  - audit-log-mode=blocking-strict                            ### Group ID: V-254555 STIG ID: CNTR-R2-000060
+  - audit-log-maxage=30                                       ### Group ID: V-254563 STIG ID: CNTR-R2-000320
+  - admission-control-config-file=/etc/rancher/rke2/config/rancher-psact.yaml     ### Group ID: V-254571 STIG ID: CNTR-R2-001130
+kubelet-arg:
+  - streaming-connection-idle-timeout=5m  ### Group ID: V-254568 STIG ID: CNTR-R2-000890
+  - protect-kernel-defaults=true          ### Group ID: V-254569 STIG ID: CNTR-R2-000940
+  - read-only-port=0                      ### Group ID: V-254559 STIG ID: CNTR-R2-000130
+  - authorization-mode=Webhook            ### Group ID: V-254561 STIG ID: CNTR-R2-000150
+  - anonymous-auth=false                  ### Group ID: V-254557 STIG ID: CNTR-R2-000110
+%{~ if disable_nginx ~}
+disable:
+  - rke2-ingress-nginx
+%{~ endif ~}
+#   - rke2-metrics-server
